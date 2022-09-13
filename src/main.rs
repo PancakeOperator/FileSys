@@ -1,18 +1,49 @@
 mod ui_sys;
-use druid::Value::String;
-use ui_sys::ui::*;
-use druid::{AppLauncher,  LocalizedString, WindowDesc};
+use ui_sys::ui::App;
+use ui_sys::ui::run_app;
+use crossterm::terminal;
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use std::{error::Error, io};
+use tui::{
+    backend::{Backend, CrosstermBackend},
+    layout::{Alignment, Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::Span,
+    widgets::{Block, BorderType, Borders},
+    Frame, Terminal,
+};
 
-use ui_sys::*;
 
-fn main() {
-    let meh = AppState {
-        text: "edit me!".into()
-    };
-    let window = WindowDesc::new(run_app)
-        .title(LocalizedString::new("FileSys").with_placeholder("Very flexible"));
-    AppLauncher::with_window(window)
-        .use_simple_logger()
-        .launch(meh)
-        .expect("launch failed");
+fn main() -> Result<(),  Box<dyn Error>> {
+    enable_raw_mode()?;
+
+    let mut stdout = io::stdout();
+
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let app = App::new();
+    let res = run_app(&mut terminal, app);
+
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+    
+    
+    if let Err(err) = res {
+        println!("{:?}", err)
+    }
+
+
+    Ok(())
 }
